@@ -1,0 +1,27 @@
+# NVIDIA CUDA Accelerated Dockerfile for Laya API
+FROM nvidia/cuda:12.2.2-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-venv \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml README.md ./
+COPY src ./src
+
+RUN pip3 install --upgrade pip && \
+    pip3 install torch --index-url https://download.pytorch.org/whl/cu121 && \
+    pip3 install ".[torch]"
+
+EXPOSE 8000
+
+ENTRYPOINT ["laya-api", "serve", "--host", "0.0.0.0", "--port", "8000", "--backend", "cuda"]
