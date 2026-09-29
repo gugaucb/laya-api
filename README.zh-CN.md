@@ -163,6 +163,8 @@ for order in stream_orders():
 
 - [多语言集成与协议实战指南 (HOW-TO)](docs/HOW_TO_GUIDE.zh-CN.md)
 - [载荷格式与问题类型规范 (Payload Formats & Question Types)](docs/PAYLOAD_FORMATS.md)
+- [版本控制与发布规范 (Versioning & Releases)](docs/VERSIONING_AND_RELEASES.md)
+- [Docker Hub 自动化发布与 CI/CD 配置指南](docs/DOCKER_HUB_SETUP.md)
 - [系统架构设计文档 (Architecture)](docs/ARCHITECTURE.md)
 - [API 接口参考手册 (API Reference)](docs/API_REFERENCE.md)
 - [部署指南 (Deployment)](docs/DEPLOYMENT.md)

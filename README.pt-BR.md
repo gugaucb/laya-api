@@ -163,6 +163,8 @@ for order in stream_orders():
 
 - [Guia Prático HOW-TO e Integração Multi-Linguagem](docs/HOW_TO_GUIDE.pt-BR.md)
 - [Especificação de Formatos de Payload e Tipos de Questions](docs/PAYLOAD_FORMATS.md)
+- [Regras de Versionamento e Padrão de Releases](docs/VERSIONING_AND_RELEASES.md)
+- [Guia de Configuração do Docker Hub & CI/CD](docs/DOCKER_HUB_SETUP.md)
 - [Especificação de Arquitetura](docs/ARCHITECTURE.md)
 - [Referência da API](docs/API_REFERENCE.md)
 - [Guia de Deploy](docs/DEPLOYMENT.md)
