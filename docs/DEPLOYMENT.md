@@ -60,10 +60,8 @@ launchctl load ~/Library/LaunchAgents/com.laya.api.plist
 ### A. NVIDIA CUDA GPU Acceleration
 Requires [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html).
 
-#### Build & Run:
+#### Run directly from Docker Hub:
 ```bash
-docker build -f docker/Dockerfile.cuda -t laya-api:cuda .
-
 docker run -d \
   --name laya-api \
   --gpus all \
@@ -71,19 +69,29 @@ docker run -d \
   -p 8000:8000 \
   -v /var/run/laya:/var/run/laya \
   -e LAYA_SOCKET_PATH=/var/run/laya/laya.sock \
-  laya-api:cuda
+  gugaucb/laya-api:cuda
+```
+
+#### Or Build Locally:
+```bash
+docker build -f docker/Dockerfile.cuda -t gugaucb/laya-api:cuda .
 ```
 
 ### B. CPU Mode
 For instances without dedicated GPUs:
-```bash
-docker build -f docker/Dockerfile.cpu -t laya-api:cpu .
 
+#### Run directly from Docker Hub:
+```bash
 docker run -d \
   --name laya-api \
   --restart unless-stopped \
   -p 8000:8000 \
-  laya-api:cpu
+  gugaucb/laya-api:latest
+```
+
+#### Or Build Locally:
+```bash
+docker build -f docker/Dockerfile.cpu -t gugaucb/laya-api:cpu .
 ```
 
 ---
@@ -109,7 +117,7 @@ spec:
     spec:
       containers:
       - name: laya-api
-        image: laya-api:cuda
+        image: gugaucb/laya-api:cuda
         ports:
         - containerPort: 8000
         env:

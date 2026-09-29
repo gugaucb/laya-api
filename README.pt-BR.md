@@ -10,6 +10,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10%2B-blue.svg" alt="Python Version">
+  <a href="https://hub.docker.com/r/gugaucb/laya-api/"><img src="https://img.shields.io/badge/Docker_Hub-gugaucb%2Flaya--api-blue?logo=docker" alt="Docker Hub"></a>
   <img src="https://img.shields.io/badge/Backend-Apple_Silicon_MLX_%7C_NVIDIA_CUDA_%7C_PyTorch-green.svg" alt="Backend Support">
   <img src="https://img.shields.io/badge/Protocol-OpenAI_%2F_Anthropic_%2F_UDS_%2F_WebSocket-orange.svg" alt="Protocols">
   <img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License">
@@ -57,7 +58,7 @@ O Laya é um motor de decisão não-autoregressivo ("System 1") projetado para a
 
 ```bash
 # Clone o repositório
-git clone https://github.com/your-org/laya-api.git
+git clone https://github.com/gugaucb/laya-api.git
 cd laya-api
 
 # Instale as dependências (via uv ou pip)
@@ -70,19 +71,29 @@ laya-api doctor
 laya-api serve --port 8000
 ```
 
-### 2. Execução via Docker (Linux CUDA / CPU)
+### 2. Execução via Docker ([Docker Hub: `gugaucb/laya-api`](https://hub.docker.com/r/gugaucb/laya-api/))
 
 > [!NOTE]
 > No macOS, utilize a execução nativa local (`laya-api serve`) para ter aceleração via GPU/Metal com MLX. O Docker no macOS roda sobre VM Linux e não tem acesso ao Metal.
 
+#### Opção A: Executar direto do Docker Hub (Recomendado)
+```bash
+# CPU Multi-Arch (Padrão)
+docker run -d --name laya-api -p 8000:8000 gugaucb/laya-api:latest
+
+# NVIDIA CUDA (Acelerado por GPU)
+docker run -d --name laya-api --gpus all -p 8000:8000 gugaucb/laya-api:cuda
+```
+
+#### Opção B: Build local a partir do código fonte
 ```bash
 # NVIDIA CUDA (Acelerado por GPU)
-docker build -f docker/Dockerfile.cuda -t laya-api:cuda .
-docker run --gpus all -p 8000:8000 laya-api:cuda
+docker build -f docker/Dockerfile.cuda -t gugaucb/laya-api:cuda .
+docker run --gpus all -p 8000:8000 gugaucb/laya-api:cuda
 
 # CPU Fallback
-docker build -f docker/Dockerfile.cpu -t laya-api:cpu .
-docker run -p 8000:8000 laya-api:cpu
+docker build -f docker/Dockerfile.cpu -t gugaucb/laya-api:cpu .
+docker run -p 8000:8000 gugaucb/laya-api:cpu
 ```
 
 ---

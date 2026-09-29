@@ -10,6 +10,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10%2B-blue.svg" alt="Python Version">
+  <a href="https://hub.docker.com/r/gugaucb/laya-api/"><img src="https://img.shields.io/badge/Docker_Hub-gugaucb%2Flaya--api-blue?logo=docker" alt="Docker Hub"></a>
   <img src="https://img.shields.io/badge/Backend-Apple_Silicon_MLX_%7C_NVIDIA_CUDA_%7C_PyTorch-green.svg" alt="Backend Support">
   <img src="https://img.shields.io/badge/Protocol-OpenAI_%2F_Anthropic_%2F_UDS_%2F_WebSocket-orange.svg" alt="Protocols">
   <img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License">
@@ -57,7 +58,7 @@ Laya 是非自回归的“系统 1 (System 1)”快速决策引擎，可在**单
 
 ```bash
 # 克隆仓库
-git clone https://github.com/your-org/laya-api.git
+git clone https://github.com/gugaucb/laya-api.git
 cd laya-api
 
 # 安装依赖（推荐使用 uv 或 pip）
@@ -70,19 +71,29 @@ laya-api doctor
 laya-api serve --port 8000
 ```
 
-### 2. Docker 部署（Linux CUDA / CPU）
+### 2. Docker 部署 ([Docker Hub: `gugaucb/laya-api`](https://hub.docker.com/r/gugaucb/laya-api/))
 
 > [!NOTE]
 > 在 macOS 上，请使用本地终端运行 (`laya-api serve`) 以获得 Apple Silicon MLX GPU 加速。macOS 上的 Docker 运行于 Linux 虚拟机中，无法调用 Metal GPU。
 
+#### 方式 A：直接从 Docker Hub 拉取运行（推荐）
+```bash
+# CPU Multi-Arch 镜像（默认）
+docker run -d --name laya-api -p 8000:8000 gugaucb/laya-api:latest
+
+# NVIDIA CUDA 镜像（GPU 硬件加速）
+docker run -d --name laya-api --gpus all -p 8000:8000 gugaucb/laya-api:cuda
+```
+
+#### 方式 B：本地源码构建镜像
 ```bash
 # NVIDIA CUDA（GPU 加速）
-docker build -f docker/Dockerfile.cuda -t laya-api:cuda .
-docker run --gpus all -p 8000:8000 laya-api:cuda
+docker build -f docker/Dockerfile.cuda -t gugaucb/laya-api:cuda .
+docker run --gpus all -p 8000:8000 gugaucb/laya-api:cuda
 
 # CPU 模式
-docker build -f docker/Dockerfile.cpu -t laya-api:cpu .
-docker run -p 8000:8000 laya-api:cpu
+docker build -f docker/Dockerfile.cpu -t gugaucb/laya-api:cpu .
+docker run -p 8000:8000 gugaucb/laya-api:cpu
 ```
 
 ---
