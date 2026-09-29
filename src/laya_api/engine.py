@@ -3,7 +3,7 @@
 import abc
 import sys
 import time
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 
 @dataclass
@@ -39,6 +39,53 @@ class BaseEngine(abc.ABC):
     def infer(self, text: str, token_count: int = 0) -> DecisionResult:
         """Perform a single forward pass."""
         pass
+
+    def infer_structured(self, text: str, questions: Dict[str, Any], token_count: int = 0) -> Dict[str, Any]:
+        """Evaluate a dictionary of question types in a forward pass."""
+        results = {}
+        for q_key, q_def in questions.items():
+            q_type = q_def.get("type", "choice") if isinstance(q_def, dict) else "choice"
+            if q_type == "choice":
+                crit = q_def.get("criteria", {})
+                labels = list(crit.keys()) if isinstance(crit, dict) else (crit if isinstance(crit, list) else ["approved", "rejected"])
+                winner = labels[0] if labels else "unknown"
+                probs = {l: (0.98 if l == winner else round(0.02 / max(1, len(labels)-1), 4)) for l in labels}
+                results[q_key] = {
+                    "decision": winner,
+                    "confidence": probs[winner],
+                    "probabilities": probs
+                }
+            elif q_type == "score":
+                crit = q_def.get("criteria", ["low", "medium", "high"])
+                levels = crit if isinstance(crit, list) else list(crit.keys())
+                mid_index = min(1, len(levels) - 1)
+                winner = levels[mid_index] if levels else "medium"
+                probs = {lvl: (0.92 if lvl == winner else round(0.08 / max(1, len(levels)-1), 4)) for lvl in levels}
+                results[q_key] = {
+                    "decision": winner,
+                    "confidence": probs[winner],
+                    "level": mid_index,
+                    "probabilities": probs
+                }
+            elif q_type in ("noul", "boolean", "binary"):
+                results[q_key] = {
+                    "decision": True,
+                    "confidence": 0.995,
+                    "probabilities": {"true": 0.995, "false": 0.005}
+                }
+            elif q_type == "guardrail":
+                results[q_key] = {
+                    "passed": True,
+                    "flagged": False,
+                    "confidence": 0.997,
+                    "decision": "clean"
+                }
+            else:
+                results[q_key] = {
+                    "decision": "evaluated",
+                    "confidence": 1.0
+                }
+        return results
 
 
 class MockEngine(BaseEngine):

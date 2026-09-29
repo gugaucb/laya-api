@@ -375,5 +375,177 @@ Laya 模型具有严格的 Token 上下文限制（如 512 或 1024 Token）。�
   - 超出长度限制时立即返回 `HTTP 400 Bad Request`，确保不会遗漏关键信息。
 - `on_overflow: "truncate_head"`（**适用于实时长会话与时序流数据**）：
   - 保留最新鲜的尾部数据，丢弃较早的历史上下文。
-- `on_overflow: "truncate_tail"`（**适用于头部带系统提示词的结构化文本**）：
-  - 保留开头的系统规则，截断超出末尾的内容。
+## 🧩 7. 多维度结构化评估 (Multi-Question)
+
+Laya 支持通过 `questions` 模式字典在单次前向推理中同时评估多个决策维度，支持包含 `choice`、`score`、`noul` 和 `guardrail` 等题型。
+
+### Python 多问题评估实战
+```python
+import httpx
+
+payload = {
+    "input": "我被重复扣款了，请今天立即退还重复扣取的费用。",
+    "questions": {
+        "department": {
+            "type": "choice",
+            "instructions": "该请求应由哪个部门处理？",
+            "criteria": {
+                "billing": "账单、支付、扣款与退款",
+                "technical": "系统故障、API 异常与 Bug",
+                "sales": "新采购与企业版咨询"
+            }
+        },
+        "urgency": {
+            "type": "score",
+            "instructions": "评估该请求的紧急程度",
+            "criteria": ["不紧急", "尽快处理", "紧急严重"]
+        },
+        "refund": {
+            "type": "noul",
+            "instructions": "客户是否在申请退款？"
+        }
+    }
+}
+
+resp = httpx.post("http://localhost:8000/v1/decide", json=payload)
+data = resp.json()
+
+print("处理部门:", data["results"]["department"]["decision"]) # -> billing
+print("紧急程度:", data["results"]["urgency"]["decision"])    # -> 尽快处理 (level 1)
+print("是否退款:", data["results"]["refund"]["decision"])    # -> True
+```
+
+### PHP / Laravel 多问题评估实战
+```php
+<?php
+
+use Illuminate\Support\Facades\Http;
+
+$payload = [
+    'input' => '我被重复扣款了，请今天立即退还重复扣取的费用。',
+    'questions' => [
+        'department' => [
+            'type' => 'choice',
+            'instructions' => '该请求应由哪个部门处理？',
+            'criteria' => [
+                'billing' => '账单、支付、扣款与退款',
+                'technical' => '系统故障、API 异常与 Bug',
+                'sales' => '新采购与企业版咨询'
+            ]
+        ],
+        'urgency' => [
+            'type' => 'score',
+            'instructions' => '评估该请求的紧急程度',
+            'criteria' => ['不紧急', '尽快处理', '紧急严重']
+        ],
+        'refund' => [
+            'type' => 'noul',
+            'instructions' => '客户是否在申请退款？'
+        ]
+    ]
+];
+
+$response = Http::baseUrl('http://localhost:8000')->post('/v1/decide', $payload);
+$results = $response->json('results');
+
+echo "处理部门: " . $results['department']['decision'] . "\n";
+echo "紧急程度: " . $results['urgency']['decision'] . "\n";
+echo "是否退款: " . ($results['refund']['decision'] ? '是' : '否') . "\n";
+```
+
+### Rust 多问题评估实战
+```rust
+use reqwest::Client;
+use serde_json::json;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Client::new();
+
+    let payload = json!({
+        "input": "我被重复扣款了，请今天立即退还重复扣取的费用。",
+        "questions": {
+            "department": {
+                "type": "choice",
+                "instructions": "该请求应由哪个部门处理？",
+                "criteria": {
+                    "billing": "账单、支付、扣款与退款",
+                    "technical": "系统故障、API 异常与 Bug",
+                    "sales": "新采购与企业版咨询"
+                }
+            },
+            "urgency": {
+                "type": "score",
+                "instructions": "评估该请求的紧急程度",
+                "criteria": ["不紧急", "尽快处理", "紧急严重"]
+            },
+            "refund": {
+                "type": "noul",
+                "instructions": "客户是否在申请退款？"
+            }
+        }
+    });
+
+    let res: serde_json::Value = client
+        .post("http://localhost:8000/v1/decide")
+        .json(&payload)
+        .send()
+        .await?
+        .json()
+        .await?;
+
+    println!("结构化判定结果:\n{}", serde_json::to_string_pretty(&res["results"])?);
+    Ok(())
+}
+```
+
+### Java 多问题评估实战
+```java
+package com.example.laya;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+public class LayaMultiQuestionExample {
+    public static void main(String[] args) throws Exception {
+        HttpClient client = HttpClient.newHttpClient();
+
+        String payload = """
+            {
+                "input": "我被重复扣款了，请今天立即退还重复扣取的费用。",
+                "questions": {
+                    "department": {
+                        "type": "choice",
+                        "instructions": "该请求应由哪个部门处理？",
+                        "criteria": {
+                            "billing": "账单、支付、扣款与退款",
+                            "technical": "系统故障、API 异常与 Bug",
+                            "sales": "新采购与企业版咨询"
+                        }
+                    },
+                    "urgency": {
+                        "type": "score",
+                        "instructions": "评估该请求的紧急程度",
+                        "criteria": ["不紧急", "尽快处理", "紧急严重"]
+                    },
+                    "refund": {
+                        "type": "noul",
+                        "instructions": "客户是否在申请退款？"
+                    }
+                }
+            }
+            """;
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:8000/v1/decide"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(payload))
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        System.out.println("结构化评估结果:\n" + response.body());
+    }
+}
+```

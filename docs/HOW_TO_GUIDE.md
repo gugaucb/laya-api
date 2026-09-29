@@ -382,5 +382,177 @@ Laya checkpoints feature strict token limits (e.g., 512 or 1024 tokens). Always 
   - Returns `HTTP 400 Bad Request` if payload exceeds limits. Guarantees no data is silently omitted.
 - `on_overflow: "truncate_head"` (**Recommended for Conversational & Real-Time Feeds**):
   - Preserves the most recent data (the tail) and drops older context.
-- `on_overflow: "truncate_tail"` (**Recommended for Structured Prompts with Fixed Instructions**):
-  - Retains initial system instructions and drops trailing overflow.
+## 🧩 7. Multi-Question Structured Evaluations
+
+Laya can evaluate multiple decision dimensions simultaneously in a single forward pass by providing a `questions` schema dictionary containing question types (`choice`, `score`, `noul`, `guardrail`).
+
+### Python Multi-Question Example
+```python
+import httpx
+
+payload = {
+    "input": "I was billed twice. Please refund the duplicate today.",
+    "questions": {
+        "department": {
+            "type": "choice",
+            "instructions": "Which team should handle this request?",
+            "criteria": {
+                "billing": "invoices, payments, refunds",
+                "technical": "bugs and outages",
+                "sales": "new purchases"
+            }
+        },
+        "urgency": {
+            "type": "score",
+            "instructions": "How urgent is this request?",
+            "criteria": ["not urgent", "soon", "critical"]
+        },
+        "refund": {
+            "type": "noul",
+            "instructions": "Does the customer ask for money back?"
+        }
+    }
+}
+
+resp = httpx.post("http://localhost:8000/v1/decide", json=payload)
+data = resp.json()
+
+print("Department:", data["results"]["department"]["decision"])  # -> billing
+print("Urgency:", data["results"]["urgency"]["decision"])        # -> soon (level 1)
+print("Refund Requested:", data["results"]["refund"]["decision"]) # -> True
+```
+
+### PHP / Laravel Multi-Question Example
+```php
+<?php
+
+use Illuminate\Support\Facades\Http;
+
+$payload = [
+    'input' => 'I was billed twice. Please refund the duplicate today.',
+    'questions' => [
+        'department' => [
+            'type' => 'choice',
+            'instructions' => 'Which team should handle this request?',
+            'criteria' => [
+                'billing' => 'invoices, payments, refunds',
+                'technical' => 'bugs and outages',
+                'sales' => 'new purchases'
+            ]
+        ],
+        'urgency' => [
+            'type' => 'score',
+            'instructions' => 'How urgent is this request?',
+            'criteria' => ['not urgent', 'soon', 'critical']
+        ],
+        'refund' => [
+            'type' => 'noul',
+            'instructions' => 'Does the customer ask for money back?'
+        ]
+    ]
+];
+
+$response = Http::baseUrl('http://localhost:8000')->post('/v1/decide', $payload);
+$results = $response->json('results');
+
+echo "Department: " . $results['department']['decision'] . "\n";
+echo "Urgency: " . $results['urgency']['decision'] . "\n";
+echo "Refund: " . ($results['refund']['decision'] ? 'YES' : 'NO') . "\n";
+```
+
+### Rust Multi-Question Example
+```rust
+use reqwest::Client;
+use serde_json::json;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Client::new();
+
+    let payload = json!({
+        "input": "I was billed twice. Please refund the duplicate today.",
+        "questions": {
+            "department": {
+                "type": "choice",
+                "instructions": "Which team should handle this request?",
+                "criteria": {
+                    "billing": "invoices, payments, refunds",
+                    "technical": "bugs and outages",
+                    "sales": "new purchases"
+                }
+            },
+            "urgency": {
+                "type": "score",
+                "instructions": "How urgent is this request?",
+                "criteria": ["not urgent", "soon", "critical"]
+            },
+            "refund": {
+                "type": "noul",
+                "instructions": "Does the customer ask for money back?"
+            }
+        }
+    });
+
+    let res: serde_json::Value = client
+        .post("http://localhost:8000/v1/decide")
+        .json(&payload)
+        .send()
+        .await?
+        .json()
+        .await?;
+
+    println!("Results:\n{}", serde_json::to_string_pretty(&res["results"])?);
+    Ok(())
+}
+```
+
+### Java Multi-Question Example
+```java
+package com.example.laya;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+public class LayaMultiQuestionExample {
+    public static void main(String[] args) throws Exception {
+        HttpClient client = HttpClient.newHttpClient();
+
+        String payload = """
+            {
+                "input": "I was billed twice. Please refund the duplicate today.",
+                "questions": {
+                    "department": {
+                        "type": "choice",
+                        "instructions": "Which team should handle this request?",
+                        "criteria": {
+                            "billing": "invoices, payments, refunds",
+                            "technical": "bugs and outages",
+                            "sales": "new purchases"
+                        }
+                    },
+                    "urgency": {
+                        "type": "score",
+                        "instructions": "How urgent is this request?",
+                        "criteria": ["not urgent", "soon", "critical"]
+                    },
+                    "refund": {
+                        "type": "noul",
+                        "instructions": "Does the customer ask for money back?"
+                    }
+                }
+            }
+            """;
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:8000/v1/decide"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(payload))
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        System.out.println("Structured Results:\n" + response.body());
+    }
+}
+```

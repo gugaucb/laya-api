@@ -22,13 +22,15 @@ from laya_api.adapters.anthropic import (
 class DecideRequest(BaseModel):
     input: str
     model: Optional[str] = None
+    questions: Optional[Dict[str, Any]] = None
     on_overflow: Literal["error", "truncate_head", "truncate_tail"] = "error"
 
 
 class DecideResponse(BaseModel):
-    label: str
-    confidence: float
-    probabilities: Dict[str, float]
+    label: Optional[str] = None
+    confidence: Optional[float] = None
+    probabilities: Optional[Dict[str, float]] = None
+    results: Optional[Dict[str, Any]] = None
     tokens: int
     latency_ms: float
     backend: str
@@ -88,6 +90,28 @@ def create_app(
         tokens, count = validator.validate_and_tokenize(req.input, on_overflow=req.on_overflow)
         normalized_input = validator.decode(tokens)
         
+        if req.questions:
+            import time
+            start = time.perf_counter()
+            structured_results = engine.infer_structured(normalized_input, req.questions, token_count=count)
+            latency_ms = round((time.perf_counter() - start) * 1000.0, 2)
+            headers = {
+                "X-Laya-Latency-Ms": str(latency_ms),
+                "X-Laya-Backend": engine.backend_name,
+                "X-Laya-Model": engine.model_name
+            }
+            return JSONResponse(
+                status_code=200,
+                headers=headers,
+                content={
+                    "results": structured_results,
+                    "tokens": count,
+                    "latency_ms": latency_ms,
+                    "backend": engine.backend_name,
+                    "model": engine.model_name
+                }
+            )
+
         result = engine.infer(normalized_input, token_count=count)
         
         headers = {
@@ -112,14 +136,52 @@ def create_app(
 
     @app.post("/v1/chat/completions")
     async def chat_completions(req: OpenAIChatRequest):
-        # Extract combined text from messages
         combined_text = "\n".join(f"{msg.role}: {msg.content}" for msg in req.messages)
         overflow_strategy = "error"
-        if req.extra_body and "on_overflow" in req.extra_body:
-            overflow_strategy = req.extra_body["on_overflow"]
+        questions = None
+        if req.extra_body:
+            if "on_overflow" in req.extra_body:
+                overflow_strategy = req.extra_body["on_overflow"]
+            if "questions" in req.extra_body:
+                questions = req.extra_body["questions"]
 
         tokens, count = validator.validate_and_tokenize(combined_text, on_overflow=overflow_strategy)
         normalized_input = validator.decode(tokens)
+
+        if questions:
+            import time
+            start = time.perf_counter()
+            structured_results = engine.infer_structured(normalized_input, questions, token_count=count)
+            latency_ms = round((time.perf_counter() - start) * 1000.0, 2)
+            headers = {
+                "X-Laya-Latency-Ms": str(latency_ms),
+                "X-Laya-Backend": engine.backend_name,
+                "X-Laya-Model": engine.model_name
+            }
+            import uuid, json
+            resp_payload = {
+                "id": f"chatcmpl-laya-{uuid.uuid4().hex[:12]}",
+                "object": "chat.completion",
+                "created": int(time.time()),
+                "model": engine.model_name,
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {
+                            "role": "assistant",
+                            "content": json.dumps(structured_results)
+                        },
+                        "finish_reason": "stop"
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": count,
+                    "completion_tokens": 1,
+                    "total_tokens": count + 1
+                },
+                "results": structured_results
+            }
+            return JSONResponse(status_code=200, headers=headers, content=resp_payload)
 
         result = engine.infer(normalized_input, token_count=count)
 
@@ -199,23 +261,37 @@ def create_app(
                     payload = json.loads(data_str)
                     raw_input = payload.get("input", "")
                     req_id = payload.get("id", "")
+                    questions = payload.get("questions", None)
                     overflow_strategy = payload.get("on_overflow", "error")
 
                     tokens, count = validator.validate_and_tokenize(raw_input, on_overflow=overflow_strategy)
                     normalized_input = validator.decode(tokens)
 
-                    result = engine.infer(normalized_input, token_count=count)
-
-                    response_data = {
-                        "id": req_id,
-                        "label": result.label,
-                        "confidence": result.confidence,
-                        "probabilities": result.probabilities,
-                        "latency_ms": result.latency_ms,
-                        "tokens": result.tokens,
-                        "backend": result.backend,
-                        "model": result.model
-                    }
+                    if questions:
+                        import time
+                        start = time.perf_counter()
+                        structured_results = engine.infer_structured(normalized_input, questions, token_count=count)
+                        latency_ms = round((time.perf_counter() - start) * 1000.0, 2)
+                        response_data = {
+                            "id": req_id,
+                            "results": structured_results,
+                            "latency_ms": latency_ms,
+                            "tokens": count,
+                            "backend": engine.backend_name,
+                            "model": engine.model_name
+                        }
+                    else:
+                        result = engine.infer(normalized_input, token_count=count)
+                        response_data = {
+                            "id": req_id,
+                            "label": result.label,
+                            "confidence": result.confidence,
+                            "probabilities": result.probabilities,
+                            "latency_ms": result.latency_ms,
+                            "tokens": result.tokens,
+                            "backend": result.backend,
+                            "model": result.model
+                        }
                     await websocket.send_text(json.dumps(response_data))
                 except ContextLengthExceededError as err:
                     err_response = {

@@ -162,6 +162,7 @@ for order in stream_orders():
 ## 📚 Documentation
 
 - [Multi-Language Integration & Protocol HOW-TO Guide](docs/HOW_TO_GUIDE.md)
+- [Payload Formats & Question Types Specification](docs/PAYLOAD_FORMATS.md)
 - [Architecture Specification](docs/ARCHITECTURE.md)
 - [API Reference](docs/API_REFERENCE.md)
 - [Deployment Guide](docs/DEPLOYMENT.md)

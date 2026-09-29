@@ -137,12 +137,79 @@ All responses and server error messages are returned in **English**.
 
 ## 3. High-Performance Native Endpoint (`/v1/decide`)
 
-Designed for maximum throughput and minimal JSON serialization overhead.
+Designed for maximum throughput, supporting both single-label and multi-question structured evaluations (see [Payload Formats & Question Types Specification](PAYLOAD_FORMATS.md)).
 
 ### Endpoint
 `POST /v1/decide`
 
-### Request Body
+### Multi-Question Structured Request Body
+```json
+{
+  "input": "I was billed twice. Please refund the duplicate today.",
+  "questions": {
+    "department": {
+      "type": "choice",
+      "instructions": "Which team should handle this request?",
+      "criteria": {
+        "billing": "invoices, payments, refunds",
+        "technical": "bugs and outages",
+        "sales": "new purchases"
+      }
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is this request?",
+      "criteria": ["not urgent", "soon", "critical"]
+    },
+    "refund": {
+      "type": "noul",
+      "instructions": "Does the customer ask for money back?"
+    }
+  },
+  "on_overflow": "error"
+}
+```
+
+### Multi-Question Response (`200 OK`)
+```json
+{
+  "results": {
+    "department": {
+      "decision": "billing",
+      "confidence": 0.994,
+      "probabilities": {
+        "billing": 0.994,
+        "sales": 0.004,
+        "technical": 0.002
+      }
+    },
+    "urgency": {
+      "decision": "soon",
+      "confidence": 0.928,
+      "level": 1,
+      "probabilities": {
+        "not urgent": 0.032,
+        "soon": 0.928,
+        "critical": 0.040
+      }
+    },
+    "refund": {
+      "decision": true,
+      "confidence": 0.999,
+      "probabilities": {
+        "true": 0.999,
+        "false": 0.001
+      }
+    }
+  },
+  "tokens": 42,
+  "latency_ms": 7.85,
+  "backend": "mlx",
+  "model": "laya-base"
+}
+```
+
+### Simple Request Body (Legacy Single-Label)
 ```json
 {
   "input": "User transaction details or text payload",

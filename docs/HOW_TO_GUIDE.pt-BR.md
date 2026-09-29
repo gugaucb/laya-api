@@ -375,5 +375,177 @@ Os modelos Laya possuem limites estritos de tokens (ex: 512 ou 1024 tokens). Con
   - Retorna `HTTP 400 Bad Request` se exceder o limite. Garante que nenhuma informação foi suprimida silenciosamente.
 - `on_overflow: "truncate_head"` (**Recomendado para Feeds em Tempo Real**):
   - Mantém os dados mais recentes (o final) e descarta o histórico antigo.
-- `on_overflow: "truncate_tail"` (**Recomendado para Prompts com Instruções no Início**):
-  - Mantém as instruções do sistema no início e descarta o excesso ao final.
+## 🧩 7. Avaliações Estruturadas com Múltiplas Perguntas (Multi-Question)
+
+O Laya permite avaliar simultaneamente múltiplas dimensões de decisão em um único forward pass através do dicionário `questions` contendo os question types (`choice`, `score`, `noul`, `guardrail`).
+
+### Exemplo Multi-Question em Python
+```python
+import httpx
+
+payload = {
+    "input": "Fui cobrado duas vezes. Por favor estorne a cobrança duplicada hoje.",
+    "questions": {
+        "department": {
+            "type": "choice",
+            "instructions": "Qual time deve tratar este chamado?",
+            "criteria": {
+                "billing": "faturas, pagamentos, estornos e reembolsos",
+                "technical": "bugs, instabilidades e problemas na API",
+                "sales": "novas compras e planos empresariais"
+            }
+        },
+        "urgency": {
+            "type": "score",
+            "instructions": "Quão urgente é esta solicitação?",
+            "criteria": ["não urgente", "em breve", "crítica"]
+        },
+        "refund": {
+            "type": "noul",
+            "instructions": "O cliente está solicitando dinheiro de volta?"
+        }
+    }
+}
+
+resp = httpx.post("http://localhost:8000/v1/decide", json=payload)
+data = resp.json()
+
+print("Departamento:", data["results"]["department"]["decision"]) # -> billing
+print("Urgência:", data["results"]["urgency"]["decision"])         # -> em breve (level 1)
+print("Solicitou Estorno:", data["results"]["refund"]["decision"]) # -> True
+```
+
+### Exemplo Multi-Question em PHP / Laravel
+```php
+<?php
+
+use Illuminate\Support\Facades\Http;
+
+$payload = [
+    'input' => 'Fui cobrado duas vezes. Por favor estorne a cobrança duplicada hoje.',
+    'questions' => [
+        'department' => [
+            'type' => 'choice',
+            'instructions' => 'Qual time deve tratar este chamado?',
+            'criteria' => [
+                'billing' => 'faturas, pagamentos, estornos e reembolsos',
+                'technical' => 'bugs, instabilidades e problemas na API',
+                'sales' => 'novas compras e planos empresariais'
+            ]
+        ],
+        'urgency' => [
+            'type' => 'score',
+            'instructions' => 'Quão urgente é esta solicitação?',
+            'criteria' => ['não urgente', 'em breve', 'crítica']
+        ],
+        'refund' => [
+            'type' => 'noul',
+            'instructions' => 'O cliente está solicitando dinheiro de volta?'
+        ]
+    ]
+];
+
+$response = Http::baseUrl('http://localhost:8000')->post('/v1/decide', $payload);
+$results = $response->json('results');
+
+echo "Departamento: " . $results['department']['decision'] . "\n";
+echo "Urgência: " . $results['urgency']['decision'] . "\n";
+echo "Estorno Solicitado: " . ($results['refund']['decision'] ? 'SIM' : 'NÃO') . "\n";
+```
+
+### Exemplo Multi-Question em Rust
+```rust
+use reqwest::Client;
+use serde_json::json;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Client::new();
+
+    let payload = json!({
+        "input": "Fui cobrado duas vezes. Por favor estorne a cobrança duplicada hoje.",
+        "questions": {
+            "department": {
+                "type": "choice",
+                "instructions": "Qual time deve tratar este chamado?",
+                "criteria": {
+                    "billing": "faturas, pagamentos, estornos e reembolsos",
+                    "technical": "bugs, instabilidades e problemas na API",
+                    "sales": "novas compras e planos empresariais"
+                }
+            },
+            "urgency": {
+                "type": "score",
+                "instructions": "Quão urgente é esta solicitação?",
+                "criteria": ["não urgente", "em breve", "crítica"]
+            },
+            "refund": {
+                "type": "noul",
+                "instructions": "O cliente está solicitando dinheiro de volta?"
+            }
+        }
+    });
+
+    let res: serde_json::Value = client
+        .post("http://localhost:8000/v1/decide")
+        .json(&payload)
+        .send()
+        .await?
+        .json()
+        .await?;
+
+    println!("Resultados Estruturados:\n{}", serde_json::to_string_pretty(&res["results"])?);
+    Ok(())
+}
+```
+
+### Exemplo Multi-Question em Java
+```java
+package com.example.laya;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+public class LayaMultiQuestionExample {
+    public static void main(String[] args) throws Exception {
+        HttpClient client = HttpClient.newHttpClient();
+
+        String payload = """
+            {
+                "input": "Fui cobrado duas vezes. Por favor estorne a cobrança duplicada hoje.",
+                "questions": {
+                    "department": {
+                        "type": "choice",
+                        "instructions": "Qual time deve tratar este chamado?",
+                        "criteria": {
+                            "billing": "faturas, pagamentos, estornos e reembolsos",
+                            "technical": "bugs, instabilidades e problemas na API",
+                            "sales": "novas compras e planos empresariais"
+                        }
+                    },
+                    "urgency": {
+                        "type": "score",
+                        "instructions": "Quão urgente é esta solicitação?",
+                        "criteria": ["não urgente", "em breve", "crítica"]
+                    },
+                    "refund": {
+                        "type": "noul",
+                        "instructions": "O cliente está solicitando dinheiro de volta?"
+                    }
+                }
+            }
+            """;
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:8000/v1/decide"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(payload))
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        System.out.println("Resultados Estruturados:\n" + response.body());
+    }
+}
+```
