@@ -161,6 +161,7 @@ for order in stream_orders():
 
 ## 📚 Documentação Adicional
 
+- [Guia Prático HOW-TO e Integração Multi-Linguagem](docs/HOW_TO_GUIDE.pt-BR.md)
 - [Especificação de Arquitetura](docs/ARCHITECTURE.md)
 - [Referência da API](docs/API_REFERENCE.md)
 - [Guia de Deploy](docs/DEPLOYMENT.md)
