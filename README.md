@@ -1,4 +1,4 @@
-# Laya API
+# Laya API 
 
 <p align="center">
   <strong>Ultra-Fast OpenAI & Anthropic-Compatible Inference API for Laya & Laya-MLX Models</strong>
